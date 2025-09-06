@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Warm Neutrals (Tailwind Slate & Amber) -->
+    <!-- Application Structure Plan: The application uses a task-oriented design with a fixed sidebar for navigation between four main modules: Dashboard, Inventory, Billing, and Staff. This structure was chosen because it directly maps to the user's primary tasks, making it highly intuitive for non-technical users. Each module is a self-contained "page" shown/hidden with JavaScript, creating a fast, single-page application experience. Modals are used for focused tasks like adding/editing items to prevent cluttering the main interface. The user flow is simple: land on the Dashboard for an overview, then navigate to a specific module to perform a task. -->
+    <!-- Visualization & Content Choices: Dashboard: Uses stat cards for quick info (Goal: Inform) and a horizontal bar chart for top-selling products (Goal: Compare), which is ideal for comparing categories with long labels. Chart.js is used for this. Inventory/Staff: Uses interactive HTML tables with search/filter capabilities (Goal: Organize). Billing: A two-column layout separates the product selection from the bill summary, a standard and effective e-commerce pattern (Goal: Create Transaction). Interactions like live search and real-time total calculation enhance usability. All interactions are handled with vanilla JavaScript to keep the application lightweight and responsive. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.5);
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="flex h-screen">
+        <!-- Sidebar Navigation -->
+        <nav class="w-64 bg-slate-800 text-white flex flex-col p-4">
+            <div class="text-2xl font-bold mb-10 border-b border-slate-700 pb-4">FamilyBiz Pro</div>
+            <ul class="flex flex-col gap-4">
+                <li><a href="#dashboard" class="nav-link flex items-center gap-3 p-3 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>Dashboard</span>
+                </a></li>
+                <li><a href="#inventory" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                    <span>Inventory</span>
+                </a></li>
+                <li><a href="#billing" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Billing</span>
+                </a></li>
+                <li><a href="#staff" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span>Staff</span>
+                </a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 lg:p-10 overflow-y-auto">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page">
+                <h1 class="text-3xl font-bold mb-2">Dashboard</h1>
+                <p class="text-slate-500 mb-8">Welcome! Here's a quick overview of your business today.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-lg font-semibold text-slate-600">Today's Sales</h3>
+                        <p class="text-4xl font-bold text-amber-500 mt-2">₹12,500</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-lg font-semibold text-slate-600">Bills Generated</h3>
+                        <p class="text-4xl font-bold text-sky-500 mt-2">15</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-lg font-semibold text-slate-600">Low Stock Items</h3>
+                        <p class="text-4xl font-bold text-red-500 mt-2">3</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4">Top Selling Products</h2>
+                    <p class="text-slate-500 mb-6">This chart shows the quantity of top products sold this month.</p>
+                    <div class="chart-container">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Page -->
+            <div id="inventory" class="page hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold">Inventory</h1>
+                        <p class="text-slate-500">Manage your product stock here.</p>
+                    </div>
+                    <button id="addProductBtn" class="bg-slate-800 text-white px-5 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors">Add New Product</button>
+                </div>
+                
+                <input type="text" id="inventorySearch" placeholder="Search for products..." class="w-full p-3 border border-slate-300 rounded-lg mb-6">
+
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-4 font-semibold">Product Name</th>
+                                <th class="p-4 font-semibold">Category</th>
+                                <th class="p-4 font-semibold">Quantity</th>
+                                <th class="p-4 font-semibold">Price (₹)</th>
+                                <th class="p-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody">
+                            <!-- Product rows will be injected here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Billing Page -->
+            <div id="billing" class="page hidden">
+                <h1 class="text-3xl font-bold mb-2">Create a New Bill</h1>
+                <p class="text-slate-500 mb-8">Search for products and add them to the bill.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <input type="text" id="billingProductSearch" placeholder="Search for products to add..." class="w-full p-3 border border-slate-300 rounded-lg mb-4">
+                        <div id="billingProductList" class="bg-white rounded-xl shadow-md max-h-96 overflow-y-auto">
+                           <!-- Product search results will be injected here -->
+                        </div>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h2 class="text-2xl font-bold mb-4 border-b pb-3">Bill Summary</h2>
+                            <div id="billItems" class="mb-4">
+                                <p class="text-slate-500 text-center py-4">No items added yet.</p>
+                            </div>
+                            <div class="border-t pt-4">
+                                <div class="flex justify-between items-center text-xl font-bold">
+                                    <span>Total</span>
+                                    <span id="billTotal">₹0.00</span>
+                                </div>
+                                <button class="w-full bg-amber-500 text-white p-4 rounded-lg font-bold mt-6 hover:bg-amber-600 transition-colors">Finalize & Print</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Page -->
+            <div id="staff" class="page hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold">Staff Management</h1>
+                        <p class="text-slate-500">Manage your employee details, salaries, and leaves.</p>
+                    </div>
+                     <button class="bg-slate-800 text-white px-5 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors">Add New Staff</button>
+                </div>
+                 <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-4 font-semibold">Full Name</th>
+                                <th class="p-4 font-semibold">Role</th>
+                                <th class="p-4 font-semibold">Status</th>
+                                <th class="p-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                            <!-- Staff rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="fixed inset-0 z-50 items-center justify-center hidden">
+        <div class="modal-backdrop fixed inset-0"></div>
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 relative p-8">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6">Add New Product</h2>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="mb-4">
+                    <label for="productName" class="block font-semibold mb-1">Product Name</label>
+                    <input type="text" id="productName" class="w-full p-3 border border-slate-300 rounded-lg" required>
+                </div>
+                <div class="mb-4">
+                    <label for="productCategory" class="block font-semibold mb-1">Category</label>
+                    <input type="text" id="productCategory" class="w-full p-3 border border-slate-300 rounded-lg">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label for="productQuantity" class="block font-semibold mb-1">Quantity</label>
+                        <input type="number" id="productQuantity" class="w-full p-3 border border-slate-300 rounded-lg" required min="0">
+                    </div>
+                    <div>
+                        <label for="productPrice" class="block font-semibold mb-1">Price (₹)</label>
+                        <input type="number" id="productPrice" class="w-full p-3 border border-slate-300 rounded-lg" required min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancelModalBtn" class="bg-slate-200 px-6 py-3 rounded-lg font-semibold hover:bg-slate-300">Cancel</button>
+                    <button type="submit" class="bg-slate-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-700">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const appState = {
+        currentPage: 'dashboard',
+        products: [
+            { id: 1, name: 'Fresh Apples', category: 'Fruits', quantity: 50, price: 150.00 },
+            { id: 2, name: 'Whole Wheat Bread', category: 'Bakery', quantity: 30, price: 45.00 },
+            { id: 3, name: 'Amul Milk 1L', category: 'Dairy', quantity: 15, price: 60.00 },
+            { id: 4, name: 'Basmati Rice 5kg', category: 'Grains', quantity: 25, price: 750.00 },
+            { id: 5, name: 'Parle-G Biscuits', category: 'Snacks', quantity: 10, price: 10.00 }
+        ],
+        staff: [
+            { id: 1, fullName: 'Ramesh Kumar', role: 'Manager', status: 'Active' },
+            { id: 2, fullName: 'Sita Sharma', role: 'Cashier', status: 'Active' },
+            { id: 3, fullName: 'Anil Singh', role: 'Stock Keeper', status: 'On Leave' },
+        ],
+        bill: {
+            items: [],
+            total: 0
+        },
+    };
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pages = document.querySelectorAll('.page');
+    const productModal = document.getElementById('productModal');
+    const addProductBtn = document.getElementById('addProductBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const productForm = document.getElementById('productForm');
+
+    function showPage(pageId) {
+        appState.currentPage = pageId;
+        pages.forEach(page => {
+            page.classList.toggle('hidden', page.id !== pageId);
+        });
+        navLinks.forEach(link => {
+            link.classList.toggle('bg-slate-700', link.hash === `#${pageId}`);
+            if (link.hash !== `#${pageId}`) {
+               link.classList.remove('bg-slate-700');
+            }
+        });
+        if(pageId === 'dashboard') {
+            renderTopProductsChart();
+        }
+    }
+
+    function renderInventoryTable() {
+        const tableBody = document.getElementById('inventoryTableBody');
+        const searchTerm = document.getElementById('inventorySearch').value.toLowerCase();
+        const filteredProducts = appState.products.filter(p => p.name.toLowerCase().includes(searchTerm));
+        
+        tableBody.innerHTML = filteredProducts.map(product => `
+            <tr class="border-b border-slate-200">
+                <td class="p-4">${product.name}</td>
+                <td class="p-4">${product.category}</td>
+                <td class="p-4 ${product.quantity <= 10 ? 'text-red-500 font-bold' : ''}">${product.quantity}</td>
+                <td class="p-4">${product.price.toFixed(2)}</td>
+                <td class="p-4">
+                    <button class="text-sky-600 hover:underline mr-4">Edit</button>
+                    <button class="text-red-600 hover:underline">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderStaffTable() {
+        const staffTableBody = document.getElementById('staffTableBody');
+        staffTableBody.innerHTML = appState.staff.map(member => `
+             <tr class="border-b border-slate-200">
+                <td class="p-4">${member.fullName}</td>
+                <td class="p-4">${member.role}</td>
+                <td class="p-4">
+                    <span class="px-3 py-1 text-sm rounded-full ${member.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}">${member.status}</span>
+                </td>
+                <td class="p-4">
+                    <button class="text-sky-600 hover:underline">View Details</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderBillingProductList() {
+        const productList = document.getElementById('billingProductList');
+        const searchTerm = document.getElementById('billingProductSearch').value.toLowerCase();
+        
+        if (searchTerm.length < 2) {
+            productList.innerHTML = `<p class="p-4 text-slate-500">Start typing to search for a product.</p>`;
+            return;
+        }
+
+        const filteredProducts = appState.products.filter(p => p.name.toLowerCase().includes(searchTerm) && p.quantity > 0);
+
+        if (filteredProducts.length === 0) {
+            productList.innerHTML = `<p class="p-4 text-slate-500">No products found.</p>`;
+            return;
+        }
+
+        productList.innerHTML = filteredProducts.map(product => `
+            <div class="flex justify-between items-center p-4 border-b border-slate-200 last:border-b-0">
+                <div>
+                    <p class="font-semibold">${product.name}</p>
+                    <p class="text-sm text-slate-500">In Stock: ${product.quantity} | ₹${product.price.toFixed(2)}</p>
+                </div>
+                <button data-product-id="${product.id}" class="add-to-bill-btn bg-sky-500 text-white px-4 py-2 rounded-lg hover:bg-sky-600 text-sm font-semibold">+</button>
+            </div>
+        `).join('');
+    }
+
+    function renderBillSummary() {
+        const billItemsContainer = document.getElementById('billItems');
+        const billTotalEl = document.getElementById('billTotal');
+
+        if (appState.bill.items.length === 0) {
+            billItemsContainer.innerHTML = `<p class="text-slate-500 text-center py-4">No items added yet.</p>`;
+        } else {
+            billItemsContainer.innerHTML = appState.bill.items.map(item => `
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-sm text-slate-500">Qty: ${item.quantity} x ₹${item.price.toFixed(2)}</p>
+                    </div>
+                    <p class="font-bold">₹${(item.quantity * item.price).toFixed(2)}</p>
+                </div>
+            `).join('');
+        }
+
+        appState.bill.total = appState.bill.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        billTotalEl.textContent = `₹${appState.bill.total.toFixed(2)}`;
+    }
+
+    function addToBill(productId) {
+        const product = appState.products.find(p => p.id === productId);
+        if (!product || product.quantity <= 0) return;
+
+        const existingItem = appState.bill.items.find(item => item.id === productId);
+        if (existingItem) {
+            if (existingItem.quantity < product.quantity) {
+                existingItem.quantity++;
+            }
+        } else {
+            appState.bill.items.push({ id: product.id, name: product.name, price: product.price, quantity: 1 });
+        }
+        renderBillSummary();
+    }
+
+    function openModal() {
+        productModal.classList.remove('hidden');
+        productModal.classList.add('flex');
+    }
+
+    function closeModal() {
+        productModal.classList.add('hidden');
+        productModal.classList.remove('flex');
+        productForm.reset();
+        document.getElementById('productId').value = '';
+    }
+    
+    let topProductsChartInstance = null;
+    function renderTopProductsChart() {
+        const ctx = document.getElementById('topProductsChart').getContext('2d');
+        if(topProductsChartInstance) {
+            topProductsChartInstance.destroy();
+        }
+        
+        const data = {
+            labels: ['Basmati Rice 5kg', 'Fresh Apples', 'Whole Wheat Bread', 'Amul Milk 1L', 'Parle-G Biscuits'],
+            datasets: [{
+                label: 'Units Sold',
+                data: [50, 45, 38, 30, 25],
+                backgroundColor: 'rgba(2, 132, 199, 0.6)',
+                borderColor: 'rgba(2, 132, 199, 1)',
+                borderWidth: 1,
+                borderRadius: 5,
+            }]
+        };
+
+        topProductsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: data,
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleFont: { size: 16 },
+                        bodyFont: { size: 14 },
+                        padding: 12,
+                        cornerRadius: 8,
+                    }
+                }
+            }
+        });
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.hash.substring(1);
+            showPage(pageId);
+        });
+    });
+
+    addProductBtn.addEventListener('click', openModal);
+    cancelModalBtn.addEventListener('click', closeModal);
+    productModal.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+
+    productForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newProduct = {
+            id: appState.products.length + 1,
+            name: document.getElementById('productName').value,
+            category: document.getElementById('productCategory').value,
+            quantity: parseInt(document.getElementById('productQuantity').value),
+            price: parseFloat(document.getElementById('productPrice').value),
+        };
+        appState.products.push(newProduct);
+        renderInventoryTable();
+        closeModal();
+    });
+
+    document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
+    document.getElementById('billingProductSearch').addEventListener('input', renderBillingProductList);
+
+    document.getElementById('billingProductList').addEventListener('click', (e) => {
+        if (e.target.classList.contains('add-to-bill-btn')) {
+            const productId = parseInt(e.target.dataset.productId);
+            addToBill(productId);
+        }
+    });
+
+    showPage('dashboard');
+    renderInventoryTable();
+    renderStaffTable();
+    renderBillingProductList();
+    renderBillSummary();
+});
+</script>
+
+</body>
+</html>
